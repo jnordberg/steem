@@ -40,33 +40,33 @@
 #define STEEMIT_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 1
 #else // IS LIVE STEEM NETWORK
 
-#define STEEMIT_INIT_PUBLIC_KEY_STR             "STM8GC13uCZbP44HzMLV6zPZGwVQ8Nt4Kji8PapsPiNq1BK153XTX"
-#define STEEMIT_CHAIN_ID                        (steemit::protocol::chain_id_type())
+#define STEEMIT_INIT_PUBLIC_KEY_STR             "STX8Tu6Mx5iXjfVjQgfsTwRMJCTxcQGp6UShTFWi2Q5pr6bLPaguf"
+#define STEEMIT_CHAIN_ID                        (fc::sha256::hash("teststeemx"))
 #define VESTS_SYMBOL  (uint64_t(6) | (uint64_t('V') << 8) | (uint64_t('E') << 16) | (uint64_t('S') << 24) | (uint64_t('T') << 32) | (uint64_t('S') << 40)) ///< VESTS with 6 digits of precision
 #define STEEM_SYMBOL  (uint64_t(3) | (uint64_t('S') << 8) | (uint64_t('T') << 16) | (uint64_t('E') << 24) | (uint64_t('E') << 32) | (uint64_t('M') << 40)) ///< STEEM with 3 digits of precision
 #define SBD_SYMBOL    (uint64_t(3) | (uint64_t('S') << 8) | (uint64_t('B') << 16) | (uint64_t('D') << 24) ) ///< STEEM Backed Dollars with 3 digits of precision
 #define STMD_SYMBOL   (uint64_t(3) | (uint64_t('S') << 8) | (uint64_t('T') << 16) | (uint64_t('M') << 24) | (uint64_t('D') << 32) ) ///< STEEM Dollars with 3 digits of precision
 #define STEEMIT_SYMBOL                          "STEEM"
-#define STEEMIT_ADDRESS_PREFIX                  "STM"
+#define STEEMIT_ADDRESS_PREFIX                  "STX"
 
-#define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1458835200))
-#define STEEMIT_MINING_TIME                     (fc::time_point_sec(1458838800))
-#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (60*60*24)    /// 1 day
-#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17 (60*60*12)    /// 12 hours
-#define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60*24*7)  /// 7 days
-#define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*24*30) /// 30 days
-#define STEEMIT_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24*14) /// 2 weeks
-#define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*60*2)     /// 2 hours
+#define STEEMIT_GENESIS_TIME                    (fc::time_point_sec(1484438400))
+#define STEEMIT_MINING_TIME                     (fc::time_point_sec(1484438400))
+#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF12 (60*60) /// 1 hour
+#define STEEMIT_CASHOUT_WINDOW_SECONDS_PRE_HF17 (60*60) /// 1 hour
+#define STEEMIT_CASHOUT_WINDOW_SECONDS          (60*60) /// 1 hour
+#define STEEMIT_SECOND_CASHOUT_WINDOW           (60*60*24*3) /// 3 days
+#define STEEMIT_MAX_CASHOUT_WINDOW_SECONDS      (60*60*24) /// 1 day
+#define STEEMIT_VOTE_CHANGE_LOCKOUT_PERIOD      (60*10) /// 10 minutes
 #define STEEMIT_UPVOTE_LOCKOUT_HF7              (fc::minutes(1))
-#define STEEMIT_UPVOTE_LOCKOUT_HF17             (fc::hours(12))
+#define STEEMIT_UPVOTE_LOCKOUT_HF17             (fc::minutes(5))
 
 #define STEEMIT_ORIGINAL_MIN_ACCOUNT_CREATION_FEE  100000
 #define STEEMIT_MIN_ACCOUNT_CREATION_FEE           1
 
-#define STEEMIT_OWNER_AUTH_RECOVERY_PERIOD                  fc::days(30)
-#define STEEMIT_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::days(1)
-#define STEEMIT_OWNER_UPDATE_LIMIT                          fc::minutes(60)
-#define STEEMIT_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 3186477
+#define STEEMIT_OWNER_AUTH_RECOVERY_PERIOD                  fc::seconds(60)
+#define STEEMIT_ACCOUNT_RECOVERY_REQUEST_EXPIRATION_PERIOD  fc::seconds(12)
+#define STEEMIT_OWNER_UPDATE_LIMIT                          fc::seconds(0)
+#define STEEMIT_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 1
 
 #endif
 
@@ -90,7 +90,7 @@
 #define STEEMIT_MAX_MINER_WITNESSES_HF17        0
 #define STEEMIT_MAX_RUNNER_WITNESSES_HF17       1
 
-#define STEEMIT_HARDFORK_REQUIRED_WITNESSES     17 // 17 of the 21 dpos witnesses (20 elected and 1 virtual time) required for hardfork. This guarantees 75% participation on all subsequent rounds.
+#define STEEMIT_HARDFORK_REQUIRED_WITNESSES     1 // 17 of the 21 dpos witnesses (20 elected and 1 virtual time) required for hardfork. This guarantees 75% participation on all subsequent rounds.
 #define STEEMIT_MAX_TIME_UNTIL_EXPIRATION       (60*60) // seconds,  aka: 1 hour
 #define STEEMIT_MAX_MEMO_SIZE                   2048
 #define STEEMIT_MAX_PROXY_RECURSION_DEPTH       4
@@ -215,13 +215,13 @@
 #define STEEMIT_MAX_PERMLINK_LENGTH             256
 #define STEEMIT_MAX_WITNESS_URL_LENGTH          2048
 
-#define STEEMIT_INIT_SUPPLY                     int64_t(0)
-#define STEEMIT_INIT_SBD_SUPPLY                 int64_t(0)
+#define STEEMIT_INIT_SUPPLY                     int64_t(100000000000000ll)
+#define STEEMIT_INIT_SBD_SUPPLY                 int64_t(100000000000000ll)
 #define STEEMIT_MAX_SHARE_SUPPLY                int64_t(1000000000000000ll)
 #define STEEMIT_MAX_SIG_CHECK_DEPTH             2
 
 // Hardfork to apply when creating a new chain
-#define STEEMIT_INIT_HARDFORK                   0
+#define STEEMIT_INIT_HARDFORK                   19
 
 #define STEEMIT_MIN_TRANSACTION_SIZE_LIMIT      1024
 #define STEEMIT_SECONDS_PER_YEAR                (uint64_t(60*60*24*365ll))
@@ -234,8 +234,8 @@
 #define STEEMIT_FEED_INTERVAL_BLOCKS            (STEEMIT_BLOCKS_PER_HOUR)
 #define STEEMIT_FEED_HISTORY_WINDOW_PRE_HF_16   (24*7) /// 7 days * 24 hours per day
 #define STEEMIT_FEED_HISTORY_WINDOW             (12*7) // 3.5 days
-#define STEEMIT_MAX_FEED_AGE_SECONDS            (60*60*24*7) // 7 days
-#define STEEMIT_MIN_FEEDS                       (STEEMIT_MAX_WITNESSES/3) /// protects the network from conversions before price has been established
+#define STEEMIT_MAX_FEED_AGE_SECONDS            (60*60*24*300) // 300 days
+#define STEEMIT_MIN_FEEDS                       1 /// protects the network from conversions before price has been established
 #define STEEMIT_CONVERSION_DELAY_PRE_HF_16      (fc::days(7))
 #define STEEMIT_CONVERSION_DELAY                (fc::hours(STEEMIT_FEED_HISTORY_WINDOW)) //3.5 day conversion
 
