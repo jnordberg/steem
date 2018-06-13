@@ -36,6 +36,7 @@
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 1
 
 #define STEEM_INIT_SUPPLY                     (int64_t( 250 ) * int64_t( 1000000 ) * int64_t( 1000 ))
+#define STEEM_INIT_SBD_SUPPLY                 int64_t(100000000000000ll)
 
 /// Allows to limit number of total produced blocks.
 #define TESTNET_BLOCK_LIMIT                   (3000000)
@@ -66,8 +67,8 @@
 #define STEEM_OWNER_UPDATE_LIMIT                          fc::minutes(1)
 #define STEEM_OWNER_AUTH_HISTORY_TRACKING_START_BLOCK_NUM 3186477
 
-#define STEEM_INIT_SUPPLY                     int64_t(0)
-
+#define STEEM_INIT_SUPPLY                     int64_t(100000000000000ll)
+#define STEEM_INIT_SBD_SUPPLY                 int64_t(100000000000000ll)
 #endif
 
 #define VESTS_SYMBOL  (steem::protocol::asset_symbol_type::from_asset_num( STEEM_ASSET_NUM_VESTS ) )
