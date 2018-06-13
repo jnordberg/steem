@@ -47,7 +47,7 @@ BOOST_AUTO_TEST_CASE( open_and_create ) {
       chainbase::database db;
       BOOST_CHECK_THROW( db.open( temp ), std::runtime_error ); /// temp does not exist
 
-      db.open( temp, database::read_write, 1024*1024*8 );
+      db.open( temp, 0, 1024*1024*8 );
 
       chainbase::database db2; /// open an already created db
       db2.open( temp );
@@ -82,7 +82,7 @@ BOOST_AUTO_TEST_CASE( open_and_create ) {
       BOOST_REQUIRE_EQUAL( new_book.b, copy_new_book.b );
 
       {
-          auto session = db.start_undo_session(true);
+          auto session = db.start_undo_session();
           db.modify( new_book, [&]( book& b ) {
               b.a = 7;
               b.b = 8;
@@ -95,7 +95,7 @@ BOOST_AUTO_TEST_CASE( open_and_create ) {
       BOOST_REQUIRE_EQUAL( new_book.b, 6 );
 
       {
-          auto session = db.start_undo_session(true);
+          auto session = db.start_undo_session();
           const auto& book2 = db.create<book>( [&]( book& b ) {
               b.a = 9;
               b.b = 10;
@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_CASE( open_and_create ) {
 
 
       {
-          auto session = db.start_undo_session(true);
+          auto session = db.start_undo_session();
           db.modify( new_book, [&]( book& b ) {
               b.a = 7;
               b.b = 8;

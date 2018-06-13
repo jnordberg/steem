@@ -8,12 +8,12 @@
 #include <fc/reflect/reflect.hpp>
 #include <fc/variant.hpp>
 
-#include <graphene/utilities/key_conversion.hpp>
+#include <steem/utilities/key_conversion.hpp>
 
-#include <steemit/protocol/types.hpp>
-#include <steemit/protocol/authority.hpp>
+#include <steem/protocol/types.hpp>
+#include <steem/protocol/authority.hpp>
 
-#include <steemit/chain/shared_authority.hpp>
+#include <steem/chain/shared_authority.hpp>
 
 #include <boost/interprocess/managed_mapped_file.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
@@ -48,25 +48,23 @@ using boost::multi_index_container;
 using namespace boost::multi_index;
 namespace bip=boost::interprocess;
 
+using chainbase::shared_string;
+using chainbase::t_deque;
+using chainbase::allocator;
+
 /* shared_string is a string type placeable in shared memory,
  *  * courtesy of Boost.Interprocess.
  *   */
 
-typedef bip::basic_string<
-  char,std::char_traits<char>,
-  bip::allocator<char,bip::managed_mapped_file::segment_manager>
-> shared_string;
-
-
-typedef bip::allocator<shared_string,bip::managed_mapped_file::segment_manager> basic_string_allocator;
-
 namespace fc {
+#ifndef ENABLE_STD_ALLOCATOR
     void to_variant( const shared_string& s, fc::variant& vo ) {
        vo = std::string(s.c_str());
     }
     void from_variant( const fc::variant& var,  shared_string& vo ) {
        vo = var.as_string().c_str();
     }
+#endif
 
     /*
     template<typename... T >
@@ -97,13 +95,11 @@ namespace fc {
 
 struct book
 {
-     typedef bip::allocator<book,bip::managed_mapped_file::segment_manager> allocator_type;
-
      template<typename Constructor, typename Allocator>
      book( Constructor&& c, const Allocator& al )
      :name(al),author(al),pages(0),prize(0),
-     auth( bip::allocator<steemit::chain::shared_authority, bip::managed_mapped_file::segment_manager>( al.get_segment_manager() )),
-     deq( basic_string_allocator( al.get_segment_manager() ) )
+     auth( allocator<steem::chain::shared_authority >( al )),
+     deq( allocator<shared_string>( al ) )
      {
         c( *this );
      }
@@ -112,13 +108,13 @@ struct book
      shared_string author;
      int32_t                          pages;
      int32_t                          prize;
-     steemit::chain::shared_authority auth;
-     bip::deque<shared_string,basic_string_allocator> deq;
+     steem::chain::shared_authority auth;
+     t_deque< shared_string > deq;
 
      book(const shared_string::allocator_type& al):
      name(al),author(al),pages(0),prize(0),
-     auth( bip::allocator<steemit::chain::shared_authority, bip::managed_mapped_file::segment_manager>( al.get_segment_manager() )),
-     deq( basic_string_allocator( al.get_segment_manager() ) )
+     auth( allocator<steem::chain::shared_authority >( al )),
+     deq( allocator<shared_string>( al ) )
      {}
 
 };
@@ -130,7 +126,7 @@ typedef multi_index_container<
      ordered_non_unique< BOOST_MULTI_INDEX_MEMBER(book,shared_string,name) >,
      ordered_non_unique< BOOST_MULTI_INDEX_MEMBER(book,int32_t,prize) >
   >,
-  bip::allocator<book,bip::managed_mapped_file::segment_manager>
+  allocator< book >
 > book_container;
 
 
@@ -153,8 +149,10 @@ int main(int argc, char** argv, char** envp)
 {
    try {
 
+#ifndef ENABLE_STD_ALLOCATOR
    bip::managed_mapped_file seg( bip::open_or_create,"./book_container.db", 1024*100);
    bip::named_mutex mutex( bip::open_or_create,"./book_container.db");
+#endif
 
    /*
    book b( book::allocator_type( seg.get_segment_manager() ) );
@@ -163,21 +161,38 @@ int main(int argc, char** argv, char** envp)
    b.deq.push_back( shared_string( "hello world", basic_string_allocator( seg.get_segment_manager() )  ) );
    idump((b));
    */
+#ifndef ENABLE_STD_ALLOCATOR
    book_container* pbc = seg.find_or_construct<book_container>("book container")( book_container::ctor_args_list(),
                                                                                   book_container::allocator_type(seg.get_segment_manager()));
+#else
+   book_container* pbc = new book_container( book_container::ctor_args_list(),
+                                             book_container::allocator_type() );
+#endif
 
    for( const auto& item : *pbc ) {
       idump((item));
    }
 
    //b.pages = pbc->size();
-   //b.auth = steemit::chain::authority( 1, "dan", pbc->size() );
+   //b.auth = steem::chain::authority( 1, "dan", pbc->size() );
+#ifndef ENABLE_STD_ALLOCATOR
    pbc->emplace( [&]( book& b ) {
                  b.name = "emplace name";
                  b.pages = pbc->size();
-                }, book::allocator_type( seg.get_segment_manager() ) );
+                }, allocator<book>( seg.get_segment_manager() ) );
+#else
+   pbc->emplace( [&]( book& b ) {
+                 b.name = "emplace name";
+                 b.pages = pbc->size();
+                }, allocator<book>() );
+#endif
 
-   bip::deque< book, book::allocator_type > * deq = seg.find_or_construct<bip::deque<book,book::allocator_type> >("book deque")( book_container::allocator_type(seg.get_segment_manager()));
+#ifndef ENABLE_STD_ALLOCATOR
+   t_deque< book > * deq = seg.find_or_construct<chainbase::t_deque<book>>("book deque")(allocator<book>(seg.get_segment_manager()));
+#else
+   t_deque< book > * deq = new chainbase::t_deque<book>( allocator<book>() );
+#endif
+
    idump((deq->size()));
 
   // book c( b ); //book::allocator_type( seg.get_segment_manager() ) );
