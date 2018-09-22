@@ -41,6 +41,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_authorities )
       op.owner = "alice";
       op.amount_to_sell = ASSET( "1.000 TESTS" );
       op.min_to_receive = asset( 1000, alice_symbol );
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_TIME_UNTIL_EXPIRATION );
 
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
@@ -49,22 +50,22 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_authorities )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test success with account signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, database::skip_transaction_dupe_check );
 
       BOOST_TEST_MESSAGE( "--- Test failure with duplicate signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with additional incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_post_key, db->get_chain_id() );
+      sign( tx, alice_post_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       validate_database();
@@ -92,6 +93,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_authorities )
       op.owner = "alice";
       op.amount_to_sell = ASSET( "1.000 TESTS" );
       op.exchange_rate = price( ASSET( "1.000 TESTS" ), asset( 1000, alice_symbol ) );
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
 
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
@@ -100,22 +102,22 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_authorities )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test success with account signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, database::skip_transaction_dupe_check );
 
       BOOST_TEST_MESSAGE( "--- Test failure with duplicate signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with additional incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_post_key, db->get_chain_id() );
+      sign( tx, alice_post_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       validate_database();
@@ -167,9 +169,10 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       op.amount_to_sell = ASSET( "10.000 TESTS" );
       op.min_to_receive = asset( 10000, alice_symbol );
       op.fill_or_kill = false;
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", op.orderid ) ) == limit_order_idx.end() );
@@ -184,7 +187,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
@@ -199,7 +202,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
@@ -207,14 +210,25 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       BOOST_REQUIRE( db->get_balance( alice_account, alice_symbol ).amount.value == alice_smt_balance.amount.value );
       validate_database();
 
+      BOOST_TEST_MESSAGE( "--- Test failure when expiration is too long" );
+      op.amount_to_sell = ASSET( "10.000 TESTS" );
+      op.min_to_receive = ASSET( "15.000 TBD" );
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION + 1 );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+
       BOOST_TEST_MESSAGE( "--- Test success creating limit order that will not be filled" );
 
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
       op.amount_to_sell = ASSET( "10.000 TESTS" );
       op.min_to_receive = asset( 15000, alice_symbol );
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       alice_balance -= ASSET( "10.000 TESTS" );
@@ -236,7 +250,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       limit_order = limit_order_idx.find( std::make_tuple( "alice", op.orderid ) );
@@ -257,7 +271,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
@@ -277,7 +291,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       bob_smt_balance -= asset (7500, alice_symbol );
@@ -308,13 +322,13 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test filling an existing order fully, but the new order partially" );
- 
+
       op.amount_to_sell = asset( 15000, alice_symbol );
       op.min_to_receive = ASSET( "10.000 TESTS" );
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       bob_smt_balance -= asset( 15000, alice_symbol );
@@ -336,7 +350,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test filling an existing order and new order fully" );
- 
+
       op.owner = "alice";
       op.orderid = 3;
       op.amount_to_sell = ASSET( "5.000 TESTS" );
@@ -344,7 +358,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       alice_balance -= ASSET( "5.000 TESTS" );
@@ -368,7 +382,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       op.owner = "bob";
@@ -378,7 +392,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       alice_balance -= ASSET( "10.000 TESTS" );
@@ -406,7 +420,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( can );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "--- Test filling limit order with better order when partial order is worse." );
@@ -421,7 +435,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       op.owner = "bob";
@@ -431,7 +445,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       alice_balance -= ASSET( "20.000 TESTS" );
@@ -479,10 +493,11 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_cancel_authorities )
       c.orderid = 1;
       c.amount_to_sell = ASSET( "1.000 TESTS" );
       c.min_to_receive = asset( 1000, alice_symbol );
+      c.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
 
       tx.operations.push_back( c );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       limit_order_cancel_operation op;
@@ -497,22 +512,22 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_cancel_authorities )
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       BOOST_TEST_MESSAGE( "--- Test success with account signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, database::skip_transaction_dupe_check );
 
       BOOST_TEST_MESSAGE( "--- Test failure with duplicate signature" );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_duplicate_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with additional incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_private_key, db->get_chain_id() );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_irrelevant_sig );
 
       BOOST_TEST_MESSAGE( "--- Test failure with incorrect signature" );
       tx.signatures.clear();
-      tx.sign( alice_post_key, db->get_chain_id() );
+      sign( tx, alice_post_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, database::skip_transaction_dupe_check ), tx_missing_active_auth );
 
       validate_database();
@@ -552,7 +567,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_cancel_apply )
       op.orderid = 5;
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_TEST_MESSAGE( "--- Test cancel order" );
@@ -562,10 +577,11 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_cancel_apply )
       create.orderid = 5;
       create.amount_to_sell = ASSET( "5.000 TESTS" );
       create.min_to_receive = asset( 7500, alice_symbol );
+      create.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( create );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", 5 ) ) != limit_order_idx.end() );
@@ -573,7 +589,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_cancel_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", 5 ) ) == limit_order_idx.end() );
@@ -627,9 +643,10 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       op.amount_to_sell = ASSET( "10.000 TESTS" );
       op.exchange_rate = price( ASSET( "1.000 TESTS" ), asset( 1000, alice_symbol ) );
       op.fill_or_kill = false;
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
       tx.operations.push_back( op );
       tx.set_expiration( db->head_block_time() + STEEM_MAX_TIME_UNTIL_EXPIRATION );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "bob", op.orderid ) ) == limit_order_idx.end() );
@@ -645,7 +662,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
@@ -660,7 +677,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
@@ -668,14 +685,25 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       BOOST_REQUIRE( db->get_balance( alice_account, alice_symbol ).amount.value == alice_smt_balance.amount.value );
       validate_database();
 
+      BOOST_TEST_MESSAGE( "--- Test failure when expiration is too long" );
+      op.amount_to_sell = ASSET( "10.000 TESTS" );
+      op.exchange_rate = price( ASSET( "2.000 TESTS" ), ASSET( "3.000 TBD" ) );
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION + 1 );
+      tx.operations.clear();
+      tx.signatures.clear();
+      tx.operations.push_back( op );
+      sign( tx, alice_private_key );
+      STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
+
       BOOST_TEST_MESSAGE( "--- Test success creating limit order that will not be filled" );
 
+      op.expiration = db->head_block_time() + fc::seconds( STEEM_MAX_LIMIT_ORDER_EXPIRATION );
       op.amount_to_sell = ASSET( "10.000 TESTS" );
       op.exchange_rate = price( ASSET( "2.000 TESTS" ), asset( 3000, alice_symbol ) );
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       alice_balance -= ASSET( "10.000 TESTS" );
@@ -697,7 +725,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       limit_order = limit_order_idx.find( std::make_tuple( "alice", op.orderid ) );
@@ -718,7 +746,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       STEEM_REQUIRE_THROW( db->push_transaction( tx, 0 ), fc::exception );
 
       BOOST_REQUIRE( limit_order_idx.find( std::make_tuple( "alice", op.orderid ) ) == limit_order_idx.end() );
@@ -738,7 +766,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       bob_smt_balance -= asset (7500, alice_symbol );
@@ -769,13 +797,13 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test filling an existing order fully, but the new order partially" );
- 
+
       op.amount_to_sell = asset( 15000, alice_symbol );
       op.exchange_rate = price( asset( 3000, alice_symbol ), ASSET( "2.000 TESTS" ) );
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       bob_smt_balance -= asset( 15000, alice_symbol );
@@ -797,7 +825,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       validate_database();
 
       BOOST_TEST_MESSAGE( "--- Test filling an existing order and new order fully" );
- 
+
       op.owner = "alice";
       op.orderid = 3;
       op.amount_to_sell = ASSET( "5.000 TESTS" );
@@ -805,7 +833,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       alice_balance -= ASSET( "5.000 TESTS" );
@@ -829,7 +857,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       op.owner = "bob";
@@ -839,7 +867,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       alice_balance -= ASSET( "10.000 TESTS" );
@@ -867,7 +895,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( can );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       BOOST_TEST_MESSAGE( "--- Test filling limit order with better order when partial order is worse." );
@@ -882,7 +910,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( alice_private_key, db->get_chain_id() );
+      sign( tx, alice_private_key );
       db->push_transaction( tx, 0 );
 
       op.owner = "bob";
@@ -892,7 +920,7 @@ BOOST_AUTO_TEST_CASE( smt_limit_order_create2_apply )
       tx.operations.clear();
       tx.signatures.clear();
       tx.operations.push_back( op );
-      tx.sign( bob_private_key, db->get_chain_id() );
+      sign( tx, bob_private_key );
       db->push_transaction( tx, 0 );
 
       alice_balance -= ASSET( "20.000 TESTS" );
@@ -1014,7 +1042,7 @@ BOOST_AUTO_TEST_CASE( claim_reward_balance2_validate )
       op.reward_tokens.push_back( asset( -1, smt3 ) );
       STEEM_REQUIRE_THROW( op.validate(), fc::assert_exception );
       op.reward_tokens.clear();
-      
+
       BOOST_TEST_MESSAGE( "Testing duplicated reward tokens." );
       op.reward_tokens.push_back( asset( 1, smt3 ) );
       op.reward_tokens.push_back( asset( 1, smt3 ) );
@@ -1288,7 +1316,7 @@ BOOST_AUTO_TEST_CASE( smt_transfer_to_vesting_apply )
          op.to = "bob";
          op.amount = asset( 2000, liquid_smt );
          PUSH_OP( op, key );
-         
+
          new_vest = op.amount * smt_share_price;
          smt_shares += new_vest;
          smt_vests += op.amount;

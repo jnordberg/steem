@@ -179,6 +179,12 @@ struct get_impacted_account_visitor
       _impacted.insert( op.owner );
    }
 
+   void operator()( const create_claimed_account_operation& op )
+   {
+      _impacted.insert( op.creator );
+      _impacted.insert( op.new_account_name );
+   }
+
 
    // vops
 
@@ -244,6 +250,11 @@ struct get_impacted_account_visitor
    void operator()( const producer_reward_operation& op )
    {
       _impacted.insert( op.producer );
+   }
+
+   void operator()( const hardfork_operation& op )
+   {
+      _impacted.insert( STEEM_INIT_MINER_NAME );
    }
 
    //void operator()( const operation& op ){}

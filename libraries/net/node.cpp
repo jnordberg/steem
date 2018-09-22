@@ -81,6 +81,7 @@
 #include <graphene/net/exceptions.hpp>
 
 #include <steem/protocol/config.hpp>
+#include <steem/plugins/statsd/utility.hpp>
 
 #include <fc/git_revision.hpp>
 
@@ -729,7 +730,7 @@ namespace graphene { namespace net {
             }
 
             ++_node._activeCalls;
-            /// At this point potential shutdownNotification shall be sent in destructor. 
+            /// At this point potential shutdownNotification shall be sent in destructor.
             _notify = true;
          }
 
@@ -774,7 +775,8 @@ namespace graphene { namespace net {
 
          return fc::schedule( wrapper, t, desc, prio );
       }
-      
+
+      void send_message_timing_to_statsd(peer_connection* originating_peer, const message& received_message, const message_hash_type& message_hash);
    }; // end class node_impl
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1786,6 +1788,7 @@ namespace graphene { namespace net {
       activity_tracer aTracer(__FUNCTION__, *this);
 
       message_hash_type message_hash = received_message.id();
+      send_message_timing_to_statsd( originating_peer, received_message, message_hash );
       dlog("handling message ${type} ${hash} size ${size} from peer ${endpoint}",
            ("type", graphene::net::core_message_type_enum(received_message.msg_type))("hash", message_hash)
            ("size", received_message.size)
@@ -1936,7 +1939,7 @@ namespace graphene { namespace net {
       fc::sha256::encoder shared_secret_encoder;
       fc::sha512 shared_secret = originating_peer->get_shared_secret();
       shared_secret_encoder.write(shared_secret.data(), sizeof(shared_secret));
-      fc::ecc::public_key expected_node_public_key(hello_message_received.signed_shared_secret, shared_secret_encoder.result(), false);
+      fc::ecc::public_key expected_node_public_key(hello_message_received.signed_shared_secret, shared_secret_encoder.result(), fc::ecc::non_canonical);
 
       // store off the data provided in the hello message
       originating_peer->user_agent = hello_message_received.user_agent;
@@ -3603,6 +3606,7 @@ namespace graphene { namespace net {
                                           const message_hash_type& message_hash)
     {
       VERIFY_CORRECT_THREAD();
+
       // find out whether we requested this item while we were synchronizing or during normal operation
       // (it's possible that we request an item during normal operation and then get kicked into sync
       // mode before we receive and process the item.  In that case, we should process the item as a normal
@@ -5231,6 +5235,24 @@ namespace graphene { namespace net {
       auto iter = std::upper_bound(_hard_fork_block_numbers.begin(), _hard_fork_block_numbers.end(),
                                    block_number);
       return iter != _hard_fork_block_numbers.end() ? *iter : 0;
+    }
+
+    void node_impl::send_message_timing_to_statsd( peer_connection* originating_peer, const message& received_message, const message_hash_type& message_hash )
+    {
+      if( steem::plugins::statsd::util::statsd_enabled() )
+      {
+        auto iter = originating_peer->items_requested_from_peer.find( item_id( received_message.msg_type, message_hash ) );
+        if( iter != originating_peer->items_requested_from_peer.end() )
+        {
+          steem::plugins::statsd::util::get_statsd().timing(
+            "p2p",
+            "latency",
+            fc::variant( core_message_type_enum( received_message.msg_type ) ).as_string(),
+            steem::plugins::statsd::util::timing_helper( fc::time_point::now() - iter->second ),
+            0.1f
+          );
+        }
+      }
     }
 
   }  // end namespace detail
