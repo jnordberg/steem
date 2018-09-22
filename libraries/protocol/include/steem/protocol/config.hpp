@@ -243,8 +243,8 @@
 #define STEEM_FEED_INTERVAL_BLOCKS            (STEEM_BLOCKS_PER_HOUR)
 #define STEEM_FEED_HISTORY_WINDOW_PRE_HF_16   (24*7) /// 7 days * 24 hours per day
 #define STEEM_FEED_HISTORY_WINDOW             (12*7) // 3.5 days
-#define STEEM_MAX_FEED_AGE_SECONDS            (60*60*24*7) // 7 days
-#define STEEM_MIN_FEEDS                       (STEEM_MAX_WITNESSES/3) /// protects the network from conversions before price has been established
+#define STEEM_MAX_FEED_AGE_SECONDS            (60*60*24*7*52) // ~1 year
+#define STEEM_MIN_FEEDS                       1
 #define STEEM_CONVERSION_DELAY_PRE_HF_16      (fc::days(7))
 #define STEEM_CONVERSION_DELAY                (fc::hours(STEEM_FEED_HISTORY_WINDOW)) //3.5 day conversion
 
