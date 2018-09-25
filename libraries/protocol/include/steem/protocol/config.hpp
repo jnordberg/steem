@@ -90,7 +90,7 @@
 #define STEEM_NUM_INIT_MINERS                 1
 #define STEEM_INIT_TIME                       (fc::time_point_sec());
 
-#define STEEM_MAX_WITNESSES                   21
+#define STEEM_MAX_WITNESSES                   1
 
 #define STEEM_MAX_VOTED_WITNESSES_HF0         19
 #define STEEM_MAX_MINER_WITNESSES_HF0         1
